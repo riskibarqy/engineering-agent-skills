@@ -1,35 +1,71 @@
 # Agent Skills
 
-Reusable AI agent skills for engineering workflows. Designed to be usable by Claude, Codex, and other AI coding agents.
+Reusable AI agent skills for engineering workflows. Designed for Claude, Codex, Cursor, Gemini CLI, and other AI coding agents.
 
 ## Skills
 
 ### ticket-context
 
-Helps an AI agent understand a ticket, inspect the repository architecture, ask clarification questions, and prepare a safe implementation plan.
+Helps an AI agent understand a ticket, inspect repository architecture, ask clarification questions, and prepare safe implementation plan.
 
-## Install
+Use Clarify Mode first for vague tickets. Use Build Mode only after questions are answered and implementation is explicitly requested.
 
-### Claude / local skill directory
+## Installation
+
+Different clients support different skill/prompt locations. Use method matching your client.
+
+### Claude Code / Generic Agent Skills Directory
 
 ```bash
 mkdir -p ~/.agents/skills
 cp -r skills/ticket-context ~/.agents/skills/
 ```
 
-Adjust the destination if your client uses a different skills directory.
+Adjust destination if your client uses another skills directory.
 
-### Codex / other agents
+### Codex-Style Manual Usage
 
-Open `skills/ticket-context/PROMPT.md` for a short reusable prompt, or use `skills/ticket-context/SKILL.md` for the full instruction.
+Open `skills/ticket-context/PROMPT.md`, copy contents into your agent prompt, then paste ticket below it.
 
-## Validate
+```txt
+Use ticket-context in Clarify Mode.
 
-```bash
-./scripts/validate.sh
+Here is the ticket:
+[paste ticket]
 ```
 
+### Cursor / Editor Prompt Usage
+
+Use `skills/ticket-context/PROMPT.md` as reusable project rule, composer prompt, or chat context.
+
+Recommended flow:
+
+1. Paste prompt.
+2. Paste ticket.
+3. Ask for Clarify Mode first.
+4. Switch to Build Mode only after ambiguity is resolved.
+
+### Gemini CLI / Generic CLI Agents
+
+Pass prompt file content before ticket text.
+
+```bash
+cat skills/ticket-context/PROMPT.md ticket.md | gemini
+```
+
+If your CLI supports system/developer prompts, use `PROMPT.md` there and provide ticket as user input.
+
+### Manual Copy-Paste Fallback
+
+Copy `skills/ticket-context/PROMPT.md` into any agent chat, then paste ticket below it.
+
+Use this when client has no skill directory support.
+
 ## Usage
+
+### Clarify Mode
+
+Use for vague tickets, PRDs, bugs, or feature requests.
 
 ```txt
 Use ticket-context skill in Clarify Mode.
@@ -37,9 +73,30 @@ Use ticket-context skill in Clarify Mode.
 Here is the ticket:
 [paste ticket]
 
-Inspect the related codebase first.
+Inspect related codebase first.
 Ask questions before implementation.
 Do not write code yet.
+```
+
+### Build Mode
+
+Use only when requirements are clear and you want implementation.
+
+```txt
+Use ticket-context skill in Build Mode.
+
+Here is the ticket:
+[paste ticket]
+
+Inspect related codebase first.
+Implement minimal safe change.
+Add/update relevant tests.
+```
+
+## Validate
+
+```bash
+./scripts/validate.sh
 ```
 
 ## Structure
@@ -56,4 +113,6 @@ skills/
     PROMPT.md
     examples/
       clarify-mode.md
+      build-mode.md
+      realistic-ticket-example.md
 ```

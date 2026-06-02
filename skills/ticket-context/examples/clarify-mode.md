@@ -1,6 +1,6 @@
 # Clarify Mode Example
 
-Use when you want the agent to inspect the codebase and clarify requirements before implementation.
+Use when agent must inspect codebase and clarify requirements before implementation.
 
 ## Prompt
 
@@ -8,12 +8,12 @@ Use when you want the agent to inspect the codebase and clarify requirements bef
 Use ticket-context in Clarify Mode.
 
 Here is the ticket:
-[paste ticket, issue, PRD, bug report, or feature request]
+Add refund status filter to transaction report.
 
 Repository/context:
-[paste repo path, branch, file list, or relevant context]
+internal/report package
 
-Inspect the related codebase first.
+Inspect related codebase first.
 Ask questions before implementation.
 Do not write code yet.
 ```
@@ -22,41 +22,33 @@ Do not write code yet.
 
 ```md
 # Summary
-- Request: [short summary]
-- Current behavior: [from code]
-- Expected behavior: [from ticket]
+- Request: Add refund status filter to transaction report.
+- Current behavior: Status filter supports `PAID`, `FAILED`, and `EXPIRED`.
+- Expected behavior: Report should support refund-related status filtering.
+
+# Evidence
+- `internal/report/handler.go`: report endpoint parses `status` query param.
+- `internal/report/usecase.go`: status mapping validates allowed values.
+- `internal/report/repository.go`: repository applies status filter in SQL query.
+- `internal/report/repository_test.go`: table tests cover `PAID`, `FAILED`, and `EXPIRED` only.
 
 # Architecture
-- Pattern: [observed architecture]
-- Relevant files: [files/modules]
-- Data flow: [short flow]
+- Pattern: handler -> usecase -> repository.
+- Relevant files: `handler.go`, `usecase.go`, `repository.go`, `repository_test.go`.
+- Data flow: query param -> usecase validation -> repo SQL filter -> report rows.
 
 # Gaps / Risks
-- [ambiguity, compatibility, migration, edge cases]
+- `REFUND` meaning unclear.
+- Export endpoint may share or bypass same status mapping.
+- Existing reports may depend on old status set.
 
 # Questions
-1. [specific blocking question based on code]
+1. Should `REFUND` include `PARTIAL_REFUND`?
+2. Should export endpoint use same status mapping?
+3. Should old saved reports preserve existing behavior?
 ```
 
-If no blocking ambiguity exists:
-
-```txt
-No blocking ambiguity found. Safe to continue implementation.
-```
-
-## Good Questions
-
-```txt
-Current validation happens in the usecase layer. Should the new rule follow that pattern?
-```
-
-```txt
-Existing batch APIs return partial success. Should this new flow preserve that behavior?
-```
-
-```txt
-The model has no field for this value. Should old records be backfilled or only new records use it?
-```
+Clarify Mode blocks implementation because refund semantics are unknown.
 
 ## Bad Questions
 
