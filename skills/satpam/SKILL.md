@@ -99,20 +99,49 @@ python3 - <<'PY'
 from pathlib import Path
 import re
 secret_re = re.compile(r'(secret|token|key|password|passwd|pwd|cookie|session|dsn|url|credential|auth)', re.I)
+b64url_re = re.compile(r'^[A-Za-z0-9_-]+$')
+
+def unquote(s):
+    s = s.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in ("'", '"'):
+        return s[1:-1]
+    return s
+
+def shape_of(s):
+    if not s:
+        return 'empty'
+    parts = s.split('.')
+    jwt_like = len(parts) == 3 and all(parts) and all(b64url_re.fullmatch(p) for p in parts)
+    if jwt_like and len(s) > 20:
+        return 'jwt-like'
+    if s.startswith('-----BEGIN '):
+        return 'pem-like'
+    if '://' in s:
+        return 'url-like'
+    return 'value'
+
 for p in ['.env', '.env.local']:
     path = Path(p)
-    if not path.exists(): continue
+    if not path.exists():
+        continue
     print(f'## {p}')
     for i, line in enumerate(path.read_text(errors='replace').splitlines(), 1):
         s = line.strip()
-        if not s or s.startswith('#'): continue
+        if not s or s.startswith('#'):
+            continue
         if '=' not in line:
             print(f'{i}: malformed_line=<redacted>')
             continue
-        k, v = line.split('=', 1)
-        v = v.strip()
-        shape = 'empty' if not v else 'url-like' if '://' in v else 'jwt-like' if v.count('.') == 2 and len(v) > 20 else 'pem-like' if v.startswith('-----BEGIN ') else 'value'
-        print(f'{i}: {k.strip()}=<redacted present={bool(v)} len={len(v)} shape={shape} sensitive={bool(secret_re.search(k))}>')
+        k, raw_v = line.split('=', 1)
+        key = k.strip()
+        value = unquote(raw_v)
+        print(
+            f'{i}: {key}=<redacted '
+            f'present={bool(value)} '
+            f'len={len(value)} '
+            f'shape={shape_of(value)} '
+            f'key_matches_sensitive_pattern={bool(secret_re.search(key))}>'
+        )
 PY
 ```
 
@@ -121,22 +150,54 @@ JSON/private config:
 ```bash
 python3 - <<'PY'
 from pathlib import Path
-import json, re
+import json
+import re
 secret_re = re.compile(r'(secret|token|key|password|passwd|pwd|cookie|session|dsn|url|credential|auth)', re.I)
+b64url_re = re.compile(r'^[A-Za-z0-9_-]+$')
+
+def shape_of(x):
+    if x is None:
+        return 'null'
+    s = str(x)
+    if not s:
+        return 'empty'
+    parts = s.split('.')
+    jwt_like = len(parts) == 3 and all(parts) and all(b64url_re.fullmatch(p) for p in parts)
+    if jwt_like and len(s) > 20:
+        return 'jwt-like'
+    if s.startswith('-----BEGIN '):
+        return 'pem-like'
+    if '://' in s:
+        return 'url-like'
+    return type(x).__name__
+
+def walk(x, prefix=''):
+    if isinstance(x, dict):
+        for k, v in x.items():
+            next_prefix = f'{prefix}.{k}' if prefix else str(k)
+            walk(v, next_prefix)
+    elif isinstance(x, list):
+        print(f'{prefix}=<array len={len(x)}>')
+    else:
+        s = '' if x is None else str(x)
+        print(
+            f'{prefix}=<redacted '
+            f'present={x is not None and s != ""} '
+            f'len={len(s)} '
+            f'shape={shape_of(x)} '
+            f'key_matches_sensitive_pattern={bool(secret_re.search(prefix))}>'
+        )
+
 for p in ['.config.json']:
     path = Path(p)
-    if not path.exists(): continue
+    if not path.exists():
+        continue
     print(f'## {p}')
-    data = json.loads(path.read_text(errors='replace'))
-    def walk(x, prefix=''):
-        if isinstance(x, dict):
-            for k, v in x.items(): walk(v, f'{prefix}.{k}' if prefix else k)
-        elif isinstance(x, list):
-            print(f'{prefix}=<array len={len(x)}>')
-        else:
-            s = '' if x is None else str(x)
-            shape = 'empty' if not s else 'url-like' if '://' in s else 'jwt-like' if s.count('.') == 2 and len(s) > 20 else 'pem-like' if s.startswith('-----BEGIN ') else type(x).__name__
-            print(f'{prefix}=<redacted present={bool(s)} len={len(s)} shape={shape} sensitive={bool(secret_re.search(prefix))}>')
+    try:
+        data = json.loads(path.read_text(errors='replace'))
+    except Exception as e:
+        print(f'{p}=<invalid_json error={type(e).__name__}>')
+        continue
     walk(data)
 PY
 ```
@@ -159,7 +220,7 @@ If already sent: continue using placeholders; do not echo raw sensitive values.
 - value empty / non-empty
 - length
 - type/shape (`url`, `uuid`, `jwt-like`, `json`, `pem-like`)
-- redacted prefix only when explicitly useful and not credential-bearing
+- redacted prefix only when explicitly useful and not credential-bearing; never print private/internal URL prefixes
 - hash prefix only when equality comparison is required and value is not low-entropy
 - config mismatch explanation
 
