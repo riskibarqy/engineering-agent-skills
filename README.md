@@ -16,12 +16,14 @@ Different clients support different skill/prompt locations. Use method matching 
 
 ### Claude Code / Generic Agent Skills Directory
 
+Install every skill:
+
 ```bash
 mkdir -p ~/.agents/skills
-cp -r skills/ticket-context ~/.agents/skills/
+cp -r skills/* ~/.agents/skills/
 ```
 
-Adjust destination if your client uses another skills directory.
+This installs every skill directory currently in the checkout. Re-run the command after adding a skill. Adjust the destination if your client uses another skills directory.
 
 ### Codex-Style Manual Usage
 
@@ -108,6 +110,8 @@ LICENSE
 scripts/
   validate.sh
 skills/
+  satpam/
+    SKILL.md
   ticket-context/
     SKILL.md
     PROMPT.md
