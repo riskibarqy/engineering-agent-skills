@@ -4,6 +4,8 @@ Reusable AI agent skills for engineering workflows. Designed for Claude, Codex, 
 
 ## Skills
 
+[Task assessment](skills/task-assessment/SKILL.md): classify task difficulty before implementation, recommend a Codex model and reasoning level, identify safe cheaper-model subtasks, and define verification. Instruction-only; stops after the assessment.
+
 ### ticket-context
 
 Helps an AI agent understand a ticket, inspect repository architecture, ask clarification questions, and prepare safe implementation plan.
@@ -62,6 +64,60 @@ If your CLI supports system/developer prompts, use `PROMPT.md` there and provide
 Copy `skills/ticket-context/PROMPT.md` into any agent chat, then paste ticket below it.
 
 Use this when client has no skill directory support.
+
+## Satpam: Install, Use, And Update
+
+Satpam is an instruction-only skill for handling secrets, personal data, and sensitive organization identifiers. It requires no packages, models, services, or Presidio installation. It guides the agent; it is not an automatic data filter and cannot guarantee that every sensitive value is detected.
+
+### Install Satpam Only
+
+Clone or download this repository, then open a terminal in its root directory. For Codex and clients that load skills from `~/.agents/skills`, run:
+
+```bash
+mkdir -p ~/.agents/skills/satpam
+cp -R skills/satpam/. ~/.agents/skills/satpam/
+```
+
+The installed skill file is `~/.agents/skills/satpam/SKILL.md`. If your client uses another skills directory, use that directory instead. Start a new agent session after installation so the client can discover it.
+
+### Use Satpam
+
+In Codex CLI or the IDE extension, explicitly mention the skill:
+
+```text
+$satpam Help debug this configuration. Inspect code and schemas first.
+If local values are necessary, report only presence, shape, and validation
+status. Do not expose credentials or personal data.
+```
+
+In other clients, select Satpam through the client's skill interface or ask the agent to use the installed Satpam skill. Clients may activate it when a task matches its description, but automatic activation is not guaranteed.
+
+Do not paste real secrets to test it. Start with synthetic values. Satpam instructs the agent to keep raw secret-bearing input out of model context, minimize sensitive output, and use metadata-only inspection when safe redaction cannot be established.
+
+### Update An Existing Installation
+
+If you installed from a Git clone, run this from a clean repository checkout to fetch the latest published changes:
+
+```bash
+git pull --ff-only
+```
+
+If you downloaded an archive instead, download and extract the latest version first. Then, from the updated repository root, repeat the copy command:
+
+```bash
+mkdir -p ~/.agents/skills/satpam
+cp -R skills/satpam/. ~/.agents/skills/satpam/
+```
+
+Copying overwrites installed files with the same names. Back up any personal edits before updating; updates to the checkout do not automatically update the installed copy. The copy does not delete extra files you added. Start a new agent session afterward to load the updated instructions.
+
+To check that the installed instructions match this checkout:
+
+```bash
+cmp skills/satpam/SKILL.md ~/.agents/skills/satpam/SKILL.md
+```
+
+No output and exit status 0 means the files match.
 
 ## Usage
 

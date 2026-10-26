@@ -88,6 +88,40 @@ For SQL/dev help, use placeholders unless exact identifiers are necessary. Prese
 
 Do not include hashes by default. Use short hash prefixes only when equality comparison between redacted values is required. Never hash low-entropy values: common passwords, env names, booleans, short IDs, ports, regions, usernames, small enums. Prefer `present`, `empty`, `len`, `shape`.
 
+## Detection And Redaction Workflow
+
+This is an instruction-only skill. No packages, models, services, or bundled scanner are required. Apply these rules using the tools already available; do not install a detector. These instructions guide handling but are not an automatic interception layer or a guarantee of detection.
+
+### Recognize Sensitive Data
+
+Use both value patterns and surrounding context. A pattern match is a candidate, not proof; a missing match is not proof of safety.
+
+| Category | Recognition cues | Default handling |
+|---|---|---|
+| Credentials | Password/token/key fields, authorization headers, session cookies, private-key blocks, credentials embedded in URLs | Suppress the complete value; report presence or shape only. |
+| Contact and identity | Emails, phone numbers, names, postal addresses, birth dates, government identifiers | Replace with typed placeholders unless strictly necessary. Names and addresses require context; patterns alone are insufficient. |
+| Financial and customer data | Bank/account/card fields, payment details, customer records | Suppress values; preserve only task-required structure and safe metadata. Do not infer safety from a failed checksum. |
+| Organization identifiers | Private hosts/IPs, internal URLs, repo names, codenames, ticket IDs | Use placeholders unless exact identifiers are essential under Identifier Rule. Public examples are not automatically sensitive. |
+| Unknown or ambiguous | Unfamiliar identifiers, opaque strings, mixed free-form payloads | Treat as potentially sensitive; report metadata only until safe handling is established. |
+
+Do not assume a language, country, fixed phone/ID format, or known token prefix covers every case. Short passwords and unfamiliar credentials still require protection when their field or context indicates a secret.
+
+### Apply Before Output
+
+1. Follow Config Discovery Order. Prefer code, schemas, and placeholder-only examples over real values. Identify the minimum information needed and which sensitivity classes may be present.
+2. Never read raw secret-bearing sources into model context to redact them afterward. If actual local values are necessary, use the existing Safe Inspection Pattern: a local process may inspect them internally but emits only approved metadata. Do not put sensitive values in command-line arguments, logs, temporary output, or exception messages. If available tools cannot keep raw values local, stop and ask for a redacted input.
+3. For content already present in the conversation, do not repeat sensitive values. Classify them using context and continue with placeholders. This minimizes further exposure; it does not undo the original disclosure.
+4. Prefer omission over transformation. When a sanitized example is necessary, preserve only the structure needed for the task and use typed labels such as `<email_1>`, `<person_1>`, `<account_1>`, and `<internal_url_1>`. Replace complete sensitive values, not just a matched substring; suppress a whole credential-bearing URL or header when partial redaction could leak another component.
+5. Use the same placeholder for the same entity within a task when equality is necessary, and different placeholders for distinct entities. Do not infer that two people are the same from an ambiguous name. Never expose identity mappings or derive labels from raw values. Hashing Rule still applies.
+6. For secret-bearing, mixed, or uncertain local input, keep both raw and transformed text local. Emit only safe presence/shape metadata or category counts; omit sensitive filenames, matched substrings, offsets, and surrounding text. A zero-match result does not authorize printing the source.
+7. Check the proposed output again for credentials, PII, organization identifiers, and unnecessary detail. Do not declare data anonymous, compliant, or safe merely because it was redacted. On inspection failure, emit a generic sanitized status and no raw or partially transformed content.
+
+### Check The Handling
+
+When constructing a local inspection command for a task, verify it with synthetic data before sensitive input. Include a contact value, a credential in an unexpected format, an internal identifier, a harmless public example, and empty/invalid input. Verify that success, zero matches, and failures never dump the source into stdout, stderr, or logs. Do not claim a check ran unless it actually did.
+
+Pattern-based checks and agent reasoning both have false positives and false negatives. If safe handling cannot be established, use metadata-only output or request a redacted sample rather than expanding access.
+
 ## Safe Inspection Pattern
 
 Use local scripts that emit only redacted output.
